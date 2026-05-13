@@ -1,0 +1,15 @@
+{
+  "name": "pullbrief",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@8.7.5",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @pullbrief/web dev",
+    "build": "pnpm --filter @pullbrief/web build",
+    "lint": "pnpm --filter @pullbrief/web lint",
+    "typecheck": "pnpm --filter @pullbrief/web typecheck"
+  }
+}
