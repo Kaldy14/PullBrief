@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  FileCode2,
   GitPullRequestArrow,
   ListOrdered,
   Search,
@@ -15,6 +16,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
+  type ChangeGroup,
   type RankedFile,
   type RiskLevel,
   sampleBrief,
@@ -37,6 +39,18 @@ const riskDot: Record<RiskLevel, string> = {
   high: "bg-risk-high",
   med: "bg-risk-med",
   low: "bg-risk-low",
+};
+
+const riskText: Record<RiskLevel, string> = {
+  high: "text-risk-high",
+  med: "text-risk-med",
+  low: "text-risk-low",
+};
+
+const riskSurface: Record<RiskLevel, string> = {
+  high: "border-risk-high/30 bg-risk-high/10",
+  med: "border-risk-med/30 bg-risk-med/10",
+  low: "border-risk-low/30 bg-risk-low/10",
 };
 
 const typeScale = [
@@ -146,26 +160,26 @@ function Hero() {
           <p className="mb-7 inline-flex items-center gap-3 font-mono text-2xs uppercase tracking-[0.1em] text-muted-foreground tabular">
             <span className="h-px w-8 bg-primary/70" aria-hidden />
             <GitPullRequestArrow className="size-3.5 text-primary" aria-hidden />
-            PullBrief, v0 foundation
+            PR review briefs for senior engineers
           </p>
 
           <h1
             id="hero-heading"
             className="font-display text-[1.875rem] font-medium leading-[1.04] text-foreground [hyphens:manual] md:text-[3.75rem] md:leading-[0.98]"
           >
-            <span className="whitespace-nowrap">Read a thirty-file</span>
+            <span className="whitespace-nowrap">Raw pull requests,</span>
             <br />
-            <span className="whitespace-nowrap">pull request</span>
+            <span className="whitespace-nowrap">compressed into</span>
             <br />
-            <span className="whitespace-nowrap text-primary">in sixty seconds.</span>
+            <span className="whitespace-nowrap text-primary">review decisions.</span>
           </h1>
 
           <p className="mt-7 max-w-[60ch] text-lg leading-relaxed text-muted-foreground">
-            PullBrief turns any GitHub pull request into a ranked, structured
-            review brief. Intent in one paragraph, risk-first file order,
-            logical change groups, verification notes. Senior reviewers
-            shouldn{`'`}t have to rebuild the same context from raw diffs every
-            time.
+            PullBrief reads a GitHub pull request and produces the review brief
+            a senior developer would want before opening the diff: a human
+            technical summary, grouped changes, risk-ranked files, and an
+            approve or request-changes recommendation. No walkthrough. No
+            obvious import commentary.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-3">
@@ -174,7 +188,7 @@ function Hero() {
               nativeButton={false}
               render={
                 <a href="#brief-preview">
-                  View sample brief
+                  Inspect sample brief
                   <ArrowRight className="size-4" aria-hidden />
                 </a>
               }
@@ -202,7 +216,7 @@ function Hero() {
             />
 
             <div className="flex items-center justify-between font-mono text-2xs uppercase tracking-[0.1em] text-muted-foreground tabular">
-              <span>Brief, at a glance</span>
+              <span>Review brief, at a glance</span>
               <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 normal-case tracking-[0.04em] text-primary">
                 abc123f
               </span>
@@ -214,6 +228,17 @@ function Hero() {
             <p className="mt-1.5 font-mono text-xs text-muted-foreground tabular">
               acme/api · #1247 · @dlee
             </p>
+
+            <Separator className="my-5" />
+
+            <div className="rounded-md border border-risk-high/30 bg-risk-high/10 p-3">
+              <p className="font-mono text-2xs uppercase tracking-[0.08em] text-risk-high tabular">
+                Likely decision
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">
+                Request changes. The rollback gate proves naming, not runtime rollback support.
+              </p>
+            </div>
 
             <Separator className="my-5" />
 
@@ -285,6 +310,26 @@ function SummaryRow({ level, label }: { level: RiskLevel; label: string }) {
    ────────────────────────────────────────────── */
 function BriefPreview({ ranked }: { ranked: RankedFile[] }) {
   const brief = sampleBrief;
+  const topFiles = brief.rankedFiles.slice(0, 3);
+  const supportingFiles = brief.rankedFiles.slice(3, 8);
+  const riskCounts = brief.rankedFiles.reduce<Record<RiskLevel, number>>(
+    (counts, file) => ({ ...counts, [file.risk]: counts[file.risk] + 1 }),
+    { high: 0, med: 0, low: 0 },
+  );
+  const decision = {
+    label: "Request changes",
+    tone: "blocking",
+    summary:
+      "Do not approve yet. The rollback gate checks naming convention, not the exported down() function, so two migrations can look safe without a runnable rollback. The queue and API wiring can be reviewed after that contract is real.",
+    nextAction:
+      "Request a gate that resolves the migration module and asserts down is a function. Keep the two targeted migration and worker tests as proof.",
+  };
+  const groupedDiffs = brief.changeGroups.map((group, index) => ({
+    group,
+    mode: index === 0 ? "read" : index === 1 ? "check" : "skim",
+    delta: index === 0 ? "+239 / −22" : index === 1 ? "+145 / −26" : index === 2 ? "+169 / −0" : "+89 / −43",
+  }));
+
   return (
     <section
       id="brief-preview"
@@ -292,223 +337,235 @@ function BriefPreview({ ranked }: { ranked: RankedFile[] }) {
       aria-labelledby="brief-preview-heading"
     >
       <SectionHeader
-        eyebrow="A working sample"
-        heading="What a brief looks like."
-        sub="Generated brief for acme/api · #1247. Real content, no lorem. Layout, density, and voice you'll see throughout the product."
+        eyebrow="Review brief"
+        heading="Decision first. Diffs grouped by meaning."
+        sub="The output is not a tutorial. It is a reviewer-facing brief: likely decision, human technical summary, grouped diffs, risk-ranked files, and comments worth leaving."
       />
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-[18rem_minmax(0,1fr)]">
-        {/* Left rail */}
-        <aside className="lg:sticky lg:top-20 lg:self-start" aria-label="Brief navigation">
-          <div className="space-y-1 font-mono text-xs text-muted-foreground tabular">
-            <span className="text-foreground">{brief.owner}/{brief.repo}</span>
-            <span className="text-border-strong"> · </span>
-            <span>#{brief.number}</span>
-          </div>
-          <h3 className="mt-1.5 text-base font-medium leading-snug text-foreground">
-            {brief.title}
-          </h3>
-          <p className="mt-2 flex items-center gap-2 font-mono text-2xs uppercase tracking-[0.06em] text-muted-foreground tabular">
-            <span>@{brief.author}</span>
-            <span className="text-border-strong">·</span>
-            <span>{brief.baseRef}</span>
-            <span className="text-border-strong">←</span>
-            <span>{brief.headRef}</span>
-          </p>
+      <div className="mt-10 grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <aside className="lg:sticky lg:top-20 lg:self-start" aria-label="Change stack">
+          <div className="rounded-lg border border-border bg-subtle/35 p-4 shadow-[0_1px_0_oklch(0_0_0/0.25)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-2xs font-medium uppercase tracking-[0.1em] text-muted-foreground tabular">
+                  Change stack
+                </p>
+                <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                  One layer per behavioral change. Incidental file churn stays collapsed.
+                </p>
+              </div>
+              <Badge variant="accent">brief</Badge>
+            </div>
 
-          <Separator className="my-5" />
+            <ol className="mt-4 space-y-2">
+              {groupedDiffs.map(({ group, mode, delta }, index) => (
+                <ChangeStackItem
+                  key={group.title}
+                  index={index + 1}
+                  title={group.title}
+                  files={group.files.length}
+                  mode={mode}
+                  delta={delta}
+                  active={index === 0}
+                />
+              ))}
+            </ol>
 
-          <p className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            Ranked files
-          </p>
-          <ol className="mt-3 space-y-0.5">
-            {ranked.map((file) => (
-              <li key={file.path}>
-                <button
-                  type="button"
-                  className={cn(
-                    "group flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left transition-colors",
-                    "hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-                    file.rank === 1 && "bg-subtle",
-                  )}
-                  aria-current={file.rank === 1 ? "true" : undefined}
-                >
-                  <span
-                    className={cn(
-                      "size-1.5 shrink-0 rounded-full",
-                      riskDot[file.risk],
-                    )}
-                    aria-hidden
-                  />
-                  <span
-                    className={cn(
-                      "w-5 shrink-0 font-mono text-2xs tabular",
-                      file.rank === 1
-                        ? "font-medium text-primary"
-                        : "text-muted-foreground",
-                    )}
+            <Separator className="my-5" />
+
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-mono text-2xs font-medium uppercase tracking-[0.1em] text-muted-foreground tabular">
+                Risk order
+              </p>
+              <span className="font-mono text-2xs text-muted-foreground tabular">
+                {brief.filesChanged} files
+              </span>
+            </div>
+            <ol className="mt-3 space-y-1.5">
+              {ranked.slice(0, 5).map((file) => (
+                <li key={file.path}>
+                  <a
+                    href="#focused-files"
+                    className="group flex items-center gap-2 rounded-sm px-2 py-1.5 transition-colors hover:bg-background/55 focus-visible:bg-background/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   >
-                    {file.rank.toString().padStart(2, "0")}
-                  </span>
-                  <span className="flex-1 truncate font-mono text-xs text-foreground/90">
-                    {file.path}
-                  </span>
-                  <span className="font-mono text-2xs text-muted-foreground tabular">
-                    +{file.added}
-                  </span>
-                </button>
-              </li>
-            ))}
-            <li className="px-2 pt-1 font-mono text-2xs text-muted-foreground">
-              + {brief.filesChanged - ranked.length} more
-            </li>
-          </ol>
+                    <span
+                      className={cn("size-1.5 shrink-0 rounded-full", riskDot[file.risk])}
+                      aria-hidden
+                    />
+                    <span className="w-5 shrink-0 font-mono text-2xs text-muted-foreground tabular">
+                      {file.rank.toString().padStart(2, "0")}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/90">
+                      {file.path}
+                    </span>
+                    <span className="font-mono text-2xs text-muted-foreground tabular">
+                      +{file.added}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ol>
 
-          <Separator className="my-5" />
-
-          <p className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            Sections
-          </p>
-          <ol className="mt-3 space-y-1 text-sm">
-            <RailNav label="Intent" active />
-            <RailNav label="Risk areas" badge={brief.riskAreas.length} />
-            <RailNav label="Change groups" badge={brief.changeGroups.length} />
-            <RailNav label="Verification" />
-            <RailNav label="Open questions" badge={brief.openQuestions.length} />
-          </ol>
+            <div className="mt-5 rounded-md border border-border bg-background/35 p-3">
+              <p className="font-mono text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground tabular">
+                Collapsed detail
+              </p>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                Imports, fixture churn, and lockfile noise stay inside their parent group unless they change behavior.
+              </p>
+            </div>
+          </div>
         </aside>
 
-        {/* Main column */}
-        <article className="max-w-[68ch]">
-          <h2
-            id="brief-preview-heading"
-            className="font-display text-2xl font-medium leading-tight text-foreground md:text-[2rem] md:leading-[1.1]"
-          >
-            {brief.title}
-          </h2>
-          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted-foreground tabular">
-            <span className="text-foreground/80">{brief.owner}/{brief.repo}</span>
-            <span className="text-border-strong">·</span>
-            <span>#{brief.number}</span>
-            <span className="text-border-strong">·</span>
-            <span>@{brief.author}</span>
-            <span className="text-border-strong">·</span>
-            <span>{brief.headSha}</span>
-            <span className="text-border-strong">·</span>
-            <span>
-              <span className="text-diff-add-foreground">+{brief.added}</span>
-              {" / "}
-              <span className="text-diff-del-foreground">−{brief.removed}</span>
-            </span>
-          </p>
+        <article className="min-w-0 rounded-xl border border-border bg-card shadow-[0_1px_0_oklch(0_0_0/0.35),0_28px_70px_-32px_oklch(0_0_0/0.65)]">
+          <header className="rounded-t-xl border-b border-border bg-subtle/35 p-5 md:p-6">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div>
+                <p className="font-mono text-xs text-muted-foreground tabular">
+                  <span className="text-foreground/80">{brief.owner}/{brief.repo}</span>
+                  <span className="mx-2 text-border-strong">·</span>
+                  <span>#{brief.number}</span>
+                  <span className="mx-2 text-border-strong">·</span>
+                  <span>@{brief.author}</span>
+                  <span className="mx-2 text-border-strong">·</span>
+                  <span>{brief.headSha}</span>
+                </p>
+                <h2
+                  id="brief-preview-heading"
+                  className="mt-2 max-w-[28ch] font-display text-2xl font-medium leading-tight text-foreground md:text-[2rem] md:leading-[1.1]"
+                >
+                  {brief.title}
+                </h2>
+              </div>
 
-          <Separator className="my-8" />
+              <dl className="grid gap-2 sm:grid-cols-3 xl:min-w-[18rem]">
+                <BriefStat label="files" value={String(brief.filesChanged)} />
+                <BriefStat label="added" value={`+${brief.added}`} tone="text-diff-add-foreground" />
+                <BriefStat label="removed" value={`−${brief.removed}`} tone="text-diff-del-foreground" />
+              </dl>
+            </div>
 
-          <SubsectionTitle index="I" title="Intent" />
-          <p className="text-lg leading-relaxed text-foreground/90">
-            {brief.intent}
-          </p>
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <Badge variant="riskHigh">{riskCounts.high} high risk</Badge>
+              <Badge variant="riskMed">{riskCounts.med} medium</Badge>
+              <Badge variant="riskLow">{riskCounts.low} low</Badge>
+              <span className="font-mono text-2xs uppercase tracking-[0.08em] text-muted-foreground tabular">
+                base {brief.baseRef} · head {brief.headRef}
+              </span>
+            </div>
+          </header>
 
-          <Separator className="my-10" />
-
-          <SubsectionTitle
-            index="II"
-            title="Risk areas"
-            meta={`${brief.riskAreas.length} found`}
-          />
-          <ol className="space-y-6">
-            {brief.riskAreas.map((area) => (
-              <li key={area.title} className="grid gap-3 md:grid-cols-[5rem_minmax(0,1fr)]">
+          <div className="divide-y divide-border">
+            <section className="p-5 md:p-6">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]">
                 <div>
-                  <Badge variant={riskVariant[area.level]}>{riskLabel[area.level]}</Badge>
-                </div>
-                <div>
-                  <h4 className="text-base font-medium text-foreground">
-                    {area.title}
-                  </h4>
-                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                    {area.reason}
+                  <p className="font-mono text-2xs font-medium uppercase tracking-[0.1em] text-risk-high tabular">
+                    Verdict, {decision.tone}
                   </p>
-                  <ul className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs text-muted-foreground/90 tabular">
-                    {area.files.map((path) => (
-                      <li key={path}>{path}</li>
-                    ))}
-                  </ul>
+                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                    {decision.label}
+                  </h3>
+                  <p className="mt-3 max-w-[70ch] text-lg leading-relaxed text-foreground/90">
+                    {decision.summary}
+                  </p>
                 </div>
-              </li>
-            ))}
-          </ol>
 
-          <Separator className="my-10" />
+                <div className="rounded-md border border-risk-high/30 bg-risk-high/10 p-4">
+                  <p className="font-mono text-2xs font-medium uppercase tracking-[0.08em] text-risk-high tabular">
+                    Blocking comment
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-foreground/90">
+                    {decision.nextAction}
+                  </p>
+                </div>
+              </div>
+            </section>
 
-          <SubsectionTitle
-            index="III"
-            title="Change groups"
-            meta={`${brief.changeGroups.length} groups`}
-          />
-          <ol className="space-y-7">
-            {brief.changeGroups.map((group, i) => (
-              <li key={group.title}>
-                <p className="mb-1 font-mono text-2xs uppercase tracking-[0.08em] text-muted-foreground tabular">
-                  Group {String(i + 1).padStart(2, "0")}
+            <section className="p-5 md:p-6">
+              <div className="grid gap-4 md:grid-cols-[9rem_minmax(0,1fr)]">
+                <SectionKicker title="Intent" icon={<GitPullRequestArrow className="size-4" aria-hidden />} />
+                <p className="max-w-[72ch] text-base leading-relaxed text-muted-foreground">
+                  {brief.intent}
                 </p>
-                <h4 className="text-base font-medium text-foreground">{group.title}</h4>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  {group.summary}
+              </div>
+            </section>
+
+            <section className="p-5 md:p-6">
+              <div className="grid gap-4 md:grid-cols-[9rem_minmax(0,1fr)]">
+                <SectionKicker title="Decision trail" icon={<ListOrdered className="size-4" aria-hidden />} />
+                <p className="max-w-[72ch] text-base leading-relaxed text-muted-foreground">
+                  {brief.decisionTrail}
                 </p>
-                <ul className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs text-muted-foreground/90 tabular">
-                  {group.files.map((path) => (
-                    <li key={path}>{path}</li>
+              </div>
+            </section>
+
+            <section className="p-5 md:p-6" aria-labelledby="decision-evidence-heading">
+              <div className="grid gap-5 md:grid-cols-[9rem_minmax(0,1fr)]">
+                <SectionKicker
+                  id="decision-evidence-heading"
+                  title="Evidence"
+                  icon={<ShieldAlert className="size-4" aria-hidden />}
+                />
+                <ol className="space-y-3">
+                  {brief.riskAreas.map((area) => (
+                    <RiskEvidenceRow key={area.title} area={area} />
                   ))}
-                </ul>
-              </li>
-            ))}
-          </ol>
+                </ol>
+              </div>
+            </section>
 
-          <Separator className="my-10" />
+            <section className="p-5 md:p-6" aria-labelledby="grouped-diff-heading">
+              <div className="grid gap-5 md:grid-cols-[9rem_minmax(0,1fr)]">
+                <SectionKicker
+                  id="grouped-diff-heading"
+                  title="Grouped diff"
+                  icon={<ListOrdered className="size-4" aria-hidden />}
+                />
+                <ol className="space-y-4">
+                  {groupedDiffs.map(({ group, mode, delta }, index) => (
+                    <GroupedDiffRow
+                      key={group.title}
+                      index={index + 1}
+                      group={group}
+                      mode={mode}
+                      delta={delta}
+                    />
+                  ))}
+                </ol>
+              </div>
+            </section>
 
-          <SubsectionTitle index="IV" title="Verification" />
-          <ol className="space-y-2.5">
-            {brief.verification.map((line, i) => (
-              <li
-                key={i}
-                className="flex items-start gap-3 text-sm leading-relaxed text-foreground/90"
-              >
-                <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-sm border border-border font-mono text-2xs text-muted-foreground tabular">
-                  {i + 1}
-                </span>
-                <span className={cn(i < 2 && "font-mono text-[0.8rem]")}>
-                  {line}
-                </span>
-              </li>
-            ))}
-          </ol>
+            <section id="focused-files" className="scroll-mt-24 p-5 md:p-6">
+              <div className="grid gap-5 md:grid-cols-[9rem_minmax(0,1fr)]">
+                <SectionKicker title="Files" icon={<FileCode2 className="size-4" aria-hidden />} />
+                <div className="space-y-5">
+                  <ol className="grid gap-3 xl:grid-cols-3">
+                    {topFiles.map((file) => (
+                      <FocusedFileRow key={file.path} file={file} />
+                    ))}
+                  </ol>
 
-          <Separator className="my-10" />
-
-          <SubsectionTitle index="V" title="Open questions" />
-          <ol className="space-y-3">
-            {brief.openQuestions.map((q, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-foreground/90">
-                <span className="mt-0.5 font-mono text-2xs uppercase tracking-[0.08em] text-muted-foreground tabular">
-                  Q{i + 1}
-                </span>
-                <span>{q}</span>
-              </li>
-            ))}
-          </ol>
-
-          <Separator className="my-10" />
-
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-xs text-muted-foreground">
-              Brief generated for head {" "}
-              <span className="font-mono text-foreground tabular">{brief.headSha}</span>.
-              Regenerates on new commits.
-            </p>
-            <Button variant="ghost" size="sm">
-              Regenerate
-            </Button>
+                  <div className="rounded-md border border-border bg-subtle/30 p-4">
+                    <p className="font-mono text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground tabular">
+                      Skim after the grouped diff
+                    </p>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {supportingFiles.map((file) => (
+                        <li key={file.path}>
+                          <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-background/45 px-2 py-1 font-mono text-2xs text-muted-foreground tabular">
+                            <span
+                              className={cn("size-1.5 rounded-full", riskDot[file.risk])}
+                              aria-hidden
+                            />
+                            {file.path}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         </article>
       </div>
@@ -516,60 +573,193 @@ function BriefPreview({ ranked }: { ranked: RankedFile[] }) {
   );
 }
 
-function SubsectionTitle({
+function ChangeStackItem({
   index,
   title,
-  meta,
+  files,
+  mode,
+  delta,
+  active,
 }: {
-  index: string;
+  index: number;
   title: string;
-  meta?: string;
+  files: number;
+  mode: string;
+  delta: string;
+  active?: boolean;
 }) {
   return (
-    <div className="mb-5 flex items-baseline gap-3">
-      <span className="font-mono text-xs text-muted-foreground tabular">{index}.</span>
-      <h3 className="text-xl font-semibold tracking-tight text-foreground">{title}</h3>
-      {meta && (
-        <span className="ml-auto font-mono text-2xs uppercase tracking-[0.06em] text-muted-foreground tabular">
-          {meta}
-        </span>
+    <li
+      className={cn(
+        "rounded-md border p-3 transition-colors",
+        active ? "border-primary/30 bg-primary/10" : "border-transparent text-muted-foreground hover:border-border hover:bg-background/35",
       )}
+    >
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 w-5 shrink-0 font-mono text-2xs text-muted-foreground tabular">
+          {String(index).padStart(2, "0")}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <p className="truncate text-sm font-medium text-foreground">{title}</p>
+            <span className="font-mono text-2xs uppercase tracking-[0.08em] text-primary tabular">
+              {mode}
+            </span>
+          </div>
+          <p className="mt-1 font-mono text-2xs text-muted-foreground tabular">
+            {files} files · {delta}
+          </p>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function BriefStat({
+  label,
+  value,
+  tone = "text-foreground",
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background/40 px-3 py-2">
+      <dt className="font-mono text-2xs uppercase tracking-[0.08em] text-muted-foreground tabular">
+        {label}
+      </dt>
+      <dd className={cn("mt-1 font-mono text-sm font-medium tabular", tone)}>{value}</dd>
     </div>
   );
 }
 
-function RailNav({
-  label,
-  badge,
-  active,
+function SectionKicker({
+  id,
+  title,
+  icon,
 }: {
-  label: string;
-  badge?: number;
-  active?: boolean;
+  id?: string;
+  title: string;
+  icon: React.ReactNode;
 }) {
   return (
-    <li>
-      <a
-        href="#"
-        className={cn(
-          "flex items-center justify-between rounded-sm px-2 py-1 text-sm transition-colors",
-          "hover:bg-subtle hover:text-foreground",
-          active ? "text-foreground bg-subtle" : "text-muted-foreground",
-        )}
+    <div className="flex items-center gap-2.5 md:block">
+      <span className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-background/45 text-muted-foreground">
+        {icon}
+      </span>
+      <h3
+        id={id}
+        className="font-mono text-2xs font-medium uppercase tracking-[0.1em] text-muted-foreground tabular md:mt-3"
       >
-        <span className="flex items-center gap-2">
-          {active && (
-            <span className="inline-block size-1 rounded-full bg-primary" aria-hidden />
-          )}
-          {!active && <span className="inline-block size-1" aria-hidden />}
-          {label}
+        {title}
+      </h3>
+    </div>
+  );
+}
+
+function RiskEvidenceRow({ area }: { area: (typeof sampleBrief.riskAreas)[number] }) {
+  const label: Record<RiskLevel, string> = {
+    high: "blocking",
+    med: "watch",
+    low: "note",
+  };
+
+  return (
+    <li className="rounded-md border border-border bg-subtle/25 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={riskVariant[area.level]}>{label[area.level]}</Badge>
+            <h4 className="text-base font-medium text-foreground">{area.title}</h4>
+          </div>
+          <p className="mt-2 max-w-[72ch] text-sm leading-relaxed text-muted-foreground">
+            {area.reason}
+          </p>
+        </div>
+        <span className="shrink-0 font-mono text-2xs text-muted-foreground tabular">
+          {area.files.length} files
         </span>
-        {typeof badge === "number" && (
-          <span className="font-mono text-2xs text-muted-foreground tabular">
-            {badge}
+      </div>
+    </li>
+  );
+}
+
+function GroupedDiffRow({
+  index,
+  group,
+  mode,
+  delta,
+}: {
+  index: number;
+  group: ChangeGroup;
+  mode: string;
+  delta: string;
+}) {
+  return (
+    <li className="grid gap-3 rounded-md border border-border bg-subtle/25 p-4 sm:grid-cols-[2.5rem_minmax(0,1fr)]">
+      <span className="inline-flex size-8 items-center justify-center rounded-md border border-primary/25 bg-primary/10 font-mono text-2xs font-medium text-primary tabular">
+        {String(index).padStart(2, "0")}
+      </span>
+      <div className="min-w-0">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="text-base font-medium text-foreground">{group.title}</h4>
+              <span className="rounded-sm border border-border bg-background/45 px-1.5 py-0.5 font-mono text-2xs uppercase tracking-[0.08em] text-muted-foreground tabular">
+                {mode}
+              </span>
+            </div>
+            <p className="mt-1.5 max-w-[70ch] text-sm leading-relaxed text-muted-foreground">
+              {group.summary}
+            </p>
+          </div>
+          <span className="shrink-0 font-mono text-2xs text-muted-foreground tabular">
+            {delta}
           </span>
-        )}
-      </a>
+        </div>
+        <ul className="mt-2.5 flex flex-wrap gap-2">
+          {group.files.slice(0, 3).map((filePath) => (
+            <li key={filePath}>
+              <code className="inline-flex rounded-sm border border-border bg-background/45 px-1.5 py-0.5 font-mono text-2xs text-muted-foreground tabular">
+                {filePath}
+              </code>
+            </li>
+          ))}
+          {group.files.length > 3 ? (
+            <li>
+              <span className="inline-flex rounded-sm border border-border bg-background/45 px-1.5 py-0.5 font-mono text-2xs text-muted-foreground tabular">
+                +{group.files.length - 3} more
+              </span>
+            </li>
+          ) : null}
+        </ul>
+      </div>
+    </li>
+  );
+}
+
+function FocusedFileRow({ file }: { file: RankedFile }) {
+  return (
+    <li className="rounded-md border border-border bg-subtle/25 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className={cn(
+            "inline-flex size-8 shrink-0 items-center justify-center rounded-md border font-mono text-2xs font-medium tabular",
+            riskSurface[file.risk],
+            riskText[file.risk],
+          )}
+        >
+          {file.rank.toString().padStart(2, "0")}
+        </span>
+        <span className="shrink-0 font-mono text-2xs text-muted-foreground tabular">
+          <span className="text-diff-add-foreground">+{file.added}</span>
+          <span className="mx-1 text-border-strong">/</span>
+          <span className="text-diff-del-foreground">−{file.removed}</span>
+        </span>
+      </div>
+      <code className="mt-3 block break-all font-mono text-xs text-foreground">{file.path}</code>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{file.summary}</p>
     </li>
   );
 }

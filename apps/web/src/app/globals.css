@@ -122,17 +122,17 @@
   --input: oklch(0.93 0.006 75);
   --ring: oklch(0.55 0.16 55);
 
-  --risk-high: oklch(0.50 0.20 25);
+  --risk-high: oklch(0.52 0.20 22);
   --risk-high-foreground: oklch(0.985 0.004 80);
-  --risk-med: oklch(0.55 0.16 55);
-  --risk-med-foreground: oklch(0.985 0.004 80);
-  --risk-low: oklch(0.50 0.08 195);
+  --risk-med: oklch(0.62 0.15 80);
+  --risk-med-foreground: oklch(0.20 0.02 80);
+  --risk-low: oklch(0.52 0.10 200);
   --risk-low-foreground: oklch(0.985 0.004 80);
 
   --diff-add: oklch(0.94 0.06 150);
-  --diff-add-foreground: oklch(0.32 0.10 150);
+  --diff-add-foreground: oklch(0.40 0.16 150);
   --diff-del: oklch(0.94 0.08 25);
-  --diff-del-foreground: oklch(0.36 0.12 25);
+  --diff-del-foreground: oklch(0.45 0.18 25);
 
   --chart-1: oklch(0.55 0.16 55);
   --chart-2: oklch(0.50 0.20 25);
@@ -187,22 +187,22 @@
   --input: oklch(0.26 0.006 70);
   --ring: oklch(0.72 0.14 65);
 
-  --risk-high: oklch(0.62 0.18 25);
+  --risk-high: oklch(0.66 0.19 22);
   --risk-high-foreground: oklch(0.96 0.02 25);
-  --risk-med: oklch(0.72 0.14 65);
-  --risk-med-foreground: oklch(0.16 0.005 70);
-  --risk-low: oklch(0.68 0.06 195);
+  --risk-med: oklch(0.78 0.13 82);
+  --risk-med-foreground: oklch(0.18 0.02 80);
+  --risk-low: oklch(0.72 0.10 200);
   --risk-low-foreground: oklch(0.16 0.005 70);
 
-  --diff-add: oklch(0.28 0.06 150);
-  --diff-add-foreground: oklch(0.86 0.10 150);
-  --diff-del: oklch(0.28 0.10 25);
-  --diff-del-foreground: oklch(0.86 0.10 25);
+  --diff-add: oklch(0.30 0.08 150);
+  --diff-add-foreground: oklch(0.82 0.16 150);
+  --diff-del: oklch(0.30 0.12 25);
+  --diff-del-foreground: oklch(0.78 0.18 25);
 
   --chart-1: oklch(0.72 0.14 65);
-  --chart-2: oklch(0.62 0.18 25);
-  --chart-3: oklch(0.68 0.06 195);
-  --chart-4: oklch(0.50 0.08 90);
+  --chart-2: oklch(0.66 0.19 22);
+  --chart-3: oklch(0.72 0.10 200);
+  --chart-4: oklch(0.78 0.13 82);
   --chart-5: oklch(0.66 0.010 75);
 
   --sidebar: oklch(0.17 0.005 70);

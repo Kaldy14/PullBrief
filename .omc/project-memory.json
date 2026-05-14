@@ -68,20 +68,20 @@
   "hotPaths": [
     {
       "path": "apps/web/src/app/page.tsx",
-      "accessCount": 16,
-      "lastAccessed": 1778698665421,
+      "accessCount": 18,
+      "lastAccessed": 1778733896472,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/app/globals.css",
+      "accessCount": 9,
+      "lastAccessed": 1778733890327,
       "type": "file"
     },
     {
       "path": "docs/INITIAL_PLAN.md",
       "accessCount": 6,
       "lastAccessed": 1778696037452,
-      "type": "file"
-    },
-    {
-      "path": "apps/web/src/app/globals.css",
-      "accessCount": 6,
-      "lastAccessed": 1778698458828,
       "type": "file"
     },
     {

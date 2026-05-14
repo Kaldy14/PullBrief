@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"curl -s -o /dev/null -w \\\"%{http_code}\\\\n\\\" http://localhost:3000 2>&1 ; curl -s -o /dev/null -w \\\"%{http_code}\\\\n\\\" http://localhost:3001 2>&1\",\"description\":\"Probe dev server ports\"}",
-  "error": "Exit code 7\n200\n000",
-  "timestamp": "2026-05-13T18:46:48.012Z",
-  "retry_count": 2
-}

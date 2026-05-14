@@ -36,6 +36,7 @@ export type SampleBrief = {
   removed: number;
   generatedAt: string;
   intent: string;
+  decisionTrail: string;
   riskAreas: RiskArea[];
   changeGroups: ChangeGroup[];
   rankedFiles: RankedFile[];
@@ -58,12 +59,14 @@ export const sampleBrief: SampleBrief = {
   generatedAt: "2026-05-13T17:42:00Z",
   intent:
     "Adds a Drizzle-based migration runner that executes schema changes inside a single write transaction and a new background worker that drains pending migrations on boot. A rollback gate refuses to apply a migration whose down-step has not been declared, which is the central safety change reviewers should evaluate.",
+  decisionTrail:
+    "The team moved migration execution from a manual dev script into the queue worker so schema drains happen on boot. To make that safe, they added a rollback gate and advisory lock instead of relying on reviewer discipline and runbook timing.",
   riskAreas: [
     {
       level: "high",
       title: "Write boundary expanded across module lines",
       reason:
-        "drizzle.write() now wraps the migration runner and the queue processor's startup hook. A failure in the worker can leave the runner with an open transaction. Verify the timeout and the rollback path.",
+        "drizzle.write() now wraps the migration runner and the queue processor's startup hook. A worker failure can leave the runner with an open transaction; the timeout and rollback path decide whether that closes cleanly.",
       files: ["schema/migrations.ts", "queue/worker.ts", "lib/drizzle/transaction.ts"],
     },
     {
@@ -80,7 +83,7 @@ export const sampleBrief: SampleBrief = {
       level: "low",
       title: "Background worker retry policy changed",
       reason:
-        "Retry backoff dropped from 30s to 5s. Reasonable for a migration drain but worth a note in CHANGELOG and the runbook.",
+        "Retry backoff dropped from 30s to 5s. Reasonable for a migration drain, but the operational contract belongs in CHANGELOG and the runbook.",
       files: ["queue/worker.ts", "docs/runbooks/queue.md"],
     },
   ],
@@ -123,7 +126,7 @@ export const sampleBrief: SampleBrief = {
       removed: 8,
       risk: "high",
       summary:
-        "MigrationRunner and the rollback gate. Read this first; the rest of the PR exists to support it.",
+        "MigrationRunner and the rollback gate. Primary semantic change; behavior hinges on runtime validation of down().",
     },
     {
       rank: 2,
@@ -132,7 +135,7 @@ export const sampleBrief: SampleBrief = {
       removed: 22,
       risk: "high",
       summary:
-        "Boot hook that drains migrations. New retry policy. Verify the queue-level lock interacts with multi-worker deployments.",
+        "Boot hook that drains migrations. New retry policy. The queue-level lock is the production race boundary for multi-worker deployments.",
     },
     {
       rank: 3,
@@ -141,7 +144,7 @@ export const sampleBrief: SampleBrief = {
       removed: 6,
       risk: "high",
       summary:
-        "drizzle.write() now accepts a nested transaction. Check whether the existing nested-write callers (audit, billing) are affected.",
+        "drizzle.write() now accepts a nested transaction. Existing nested-write callers, audit and billing, are the blast radius.",
     },
     {
       rank: 4,
@@ -150,7 +153,7 @@ export const sampleBrief: SampleBrief = {
       removed: 0,
       risk: "med",
       summary:
-        "New advisory lock per migration name. Postgres LOCK_TIMEOUT default is 0; this sets 30s. Worth a comment in the runbook.",
+        "New advisory lock per migration name. Postgres LOCK_TIMEOUT default is 0; this sets 30s and changes the runbook contract.",
     },
     {
       rank: 5,
@@ -168,7 +171,7 @@ export const sampleBrief: SampleBrief = {
       removed: 0,
       risk: "med",
       summary:
-        "New audit_log table. No down() — should be blocked by the rollback gate or annotated as terminal.",
+        "New audit_log table. No down(); safe only if the rollback gate blocks it or the migration is marked terminal.",
     },
     {
       rank: 7,
@@ -177,7 +180,7 @@ export const sampleBrief: SampleBrief = {
       removed: 0,
       risk: "med",
       summary:
-        "Index on pr_reports(head_sha). Concurrent index creation not used; will hold a brief lock on the table.",
+        "Index on pr_reports(head_sha). Concurrent index creation is not used, so the table takes a brief lock.",
     },
     {
       rank: 8,
@@ -193,7 +196,7 @@ export const sampleBrief: SampleBrief = {
       added: 9,
       removed: 0,
       risk: "low",
-      summary: "Mounts the new admin migration routes. No semantic change to existing routes.",
+      summary: "Mounts the new admin migration routes. Existing route semantics stay untouched.",
     },
     {
       rank: 10,
@@ -201,7 +204,7 @@ export const sampleBrief: SampleBrief = {
       added: 96,
       removed: 0,
       risk: "low",
-      summary: "Covers the happy path and the rollback-gate refusal. No integration test for the queue interaction.",
+      summary: "Covers the happy path and rollback-gate refusal. Queue interaction remains untested.",
     },
     {
       rank: 11,
@@ -217,7 +220,7 @@ export const sampleBrief: SampleBrief = {
       added: 24,
       removed: 8,
       risk: "low",
-      summary: "How to declare a rollback. Reads cleanly.",
+      summary: "How to declare a rollback. No behavior change.",
     },
     {
       rank: 13,
