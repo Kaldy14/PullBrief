@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { Wordmark } from "@/components/brand/wordmark";
+import { PullRequestUrlForm } from "@/components/reports/pr-url-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,8 +142,15 @@ function TopBar() {
 
           <span className="hidden items-center gap-2 font-mono text-2xs uppercase tracking-[0.1em] text-muted-foreground md:inline-flex tabular">
             <span className="pb-status-dot inline-block size-1.5 rounded-full bg-primary" aria-hidden />
-            self-hosted preview
+            internal preview
           </span>
+
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/sign-in">Sign in</Link>}
+          />
         </div>
       </div>
     </header>
@@ -182,8 +190,13 @@ function Hero() {
             obvious import commentary.
           </p>
 
-          <div className="mt-10 flex flex-wrap items-center gap-3">
+          <div className="mt-10 max-w-[44rem] rounded-lg border border-border bg-subtle/35 p-4">
+            <PullRequestUrlForm />
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <Button
+              variant="outline"
               size="lg"
               nativeButton={false}
               render={
@@ -193,14 +206,8 @@ function Hero() {
                 </a>
               }
             />
-            <Button
-              variant="outline"
-              size="lg"
-              nativeButton={false}
-              render={<Link href="/docs/INITIAL_PLAN.md">Read the plan</Link>}
-            />
             <span className="ml-1 text-xs text-muted-foreground">
-              open source. self-host today, hosted later.
+              internal access only. accounts are seeded by an admin.
             </span>
           </div>
         </div>
@@ -990,11 +997,11 @@ function SiteFooter() {
           </span>
         </div>
         <div className="flex items-center gap-4 font-mono text-2xs uppercase tracking-[0.06em] text-muted-foreground tabular">
-          <Link href="/docs/INITIAL_PLAN.md" className="hover:text-foreground transition-colors">
+          <Link href="https://github.com/Kaldy14/PullBrief/blob/main/docs/INITIAL_PLAN.md" className="hover:text-foreground transition-colors">
             Plan
           </Link>
           <span className="text-border-strong">·</span>
-          <Link href="https://github.com" className="hover:text-foreground transition-colors">
+          <Link href="https://github.com/Kaldy14/PullBrief" className="hover:text-foreground transition-colors">
             GitHub
           </Link>
           <span className="text-border-strong">·</span>

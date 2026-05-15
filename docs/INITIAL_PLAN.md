@@ -235,7 +235,7 @@ Required self-hosting docs:
 Provider interfaces should be explicit so the app can grow without becoming tied to one vendor:
 
 - Git hosting provider: GitHub first; GitLab/Bitbucket possible later.
-- Model provider: OpenAI first; Codex CLI/Anthropic/local models possible later.
+- Model provider: pi CLI first for the MVP; direct provider APIs such as OpenAI/Anthropic/local models can become adapters later.
 - Issue tracker: Jira first; Linear/GitHub Issues possible later.
 - Storage: local filesystem first for self-hosted; S3/S3-compatible object storage for production.
 - Auth: Better Auth foundation with pluggable providers.
@@ -298,7 +298,9 @@ Jira/Atlassian integration:
 
 AI engine:
 
-- Use OpenAI API directly for predictable summarization and chat.
+- For the MVP, call the locally installed pi harness in print mode, for example `pi -p "..."`, after the operator has authenticated pi with ChatGPT/Codex credentials through `/login`.
+- Do not require an OpenAI API key in the MVP app.
+- Direct provider APIs such as OpenAI/Anthropic/local models can become adapters later if needed.
 - Use Codex CLI or `openai/codex-action` later for agentic repository tasks.
 - Prefer structured JSON output from the LLM, then render deterministic UI from that JSON.
 
@@ -376,7 +378,8 @@ GITHUB_APP_CLIENT_ID
 GITHUB_APP_CLIENT_SECRET
 GITHUB_APP_PRIVATE_KEY
 GITHUB_WEBHOOK_SECRET
-OPENAI_API_KEY or CODEX_API_KEY
+PULLBRIEF_PI_COMMAND / pi login state for MVP report generation
+Direct provider API keys only if a later adapter needs them
 ```
 
 Use the host platform's secret store, such as AWS Secrets Manager, Vercel env vars, Doppler, 1Password, or Docker secrets. Do not commit these values.
@@ -620,9 +623,16 @@ report.json         # model-generated structured analysis
 report.html         # deterministic rendered static export, optional
 ```
 
-## Codex CLI and OpenAI Usage
+## pi CLI and Codex CLI Usage
 
-Codex CLI can run non-interactively in CI with `codex exec`.
+For the MVP app path, PullBrief uses pi print mode after the operator logs in through pi:
+
+```bash
+pi --no-session --no-tools --no-context-files --no-skills --no-prompt-templates --no-extensions \
+  -p "Read pr_context JSON from stdin and produce PullBrief report JSON."
+```
+
+Codex CLI can still run non-interactively in CI with `codex exec` for later agentic or CI-only workflows.
 
 Useful patterns:
 
@@ -635,22 +645,12 @@ codex exec \
   "Read .tmp/pr-report/context.json and produce the PR review report JSON."
 ```
 
-For GitHub Actions, the official action can also be used:
-
-```yaml
-- name: Run Codex
-  uses: openai/codex-action@v1
-  with:
-    openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-    prompt-file: .github/codex/prompts/pr-report.md
-    output-file: .tmp/pr-report/report.json
-    safety-strategy: drop-sudo
-    sandbox: workspace-write
-```
+A direct GitHub Actions model-provider action can be evaluated later if the MVP moves report generation back into CI.
 
 Recommended split:
 
-- Use direct OpenAI API calls for the normal app report/chat path.
+- Use the local pi CLI for the MVP report generation path.
+- Keep direct provider API calls as a later adapter option, not an MVP requirement.
 - Use Codex CLI for agentic tasks where it needs to inspect a checkout, run commands, or propose patches.
 - Use structured output schemas wherever the output feeds UI or automation.
 
@@ -1171,7 +1171,7 @@ Deliverables:
 - New Next.js project.
 - URL parser for GitHub PR URLs.
 - Manual GitHub token or app token configured server-side for early testing.
-- Generate report from GitHub API data.
+- Generate report from GitHub API data by shelling out to `pi -p` in print mode.
 - Store report in database.
 - Render report page.
 
@@ -1267,7 +1267,7 @@ Smallest valuable MVP:
 - Self-hosted GitHub App setup with read access to selected repositories.
 - Tenant/install configuration keyed by GitHub installation ID.
 - Paste/open PR URL.
-- Generate structured report JSON.
+- Generate structured report JSON through the local pi CLI, not a direct OpenAI API key.
 - Render report UI.
 - Sticky PR comment link.
 
@@ -1322,7 +1322,7 @@ Do not include chat or writeback in the first cut. Design the report data model 
 10. Fetch PR metadata, files, patches, commits, and checks.
 11. Build `pr_context.json`.
 12. Define `pr_report.schema.json`.
-13. Generate a report with OpenAI API or Codex CLI.
+13. Generate a report with the local pi CLI (`pi -p`) after authenticating pi with ChatGPT/Codex credentials.
 14. Render the report page.
 15. Add sticky PR comment linking to the report.
 16. Add weekly-report scaffolding only after PR summaries are working.

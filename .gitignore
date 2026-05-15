@@ -28,6 +28,10 @@ yarn-error.log*
 .env*.local
 .env
 
+# pullbrief local data
+.pullbrief/
+apps/web/.pullbrief/
+
 # vercel
 .vercel
 
