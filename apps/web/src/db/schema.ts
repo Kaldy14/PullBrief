@@ -280,6 +280,13 @@ export const reviewJobs = pgTable(
     headSha: text("head_sha"),
     trigger: text("trigger", { enum: ["manual", "webhook", "rerun", "comment"] }).default("manual").notNull(),
     status: text("status", { enum: ["queued", "running", "ready", "failed", "cancelled"] }).default("queued").notNull(),
+    priority: integer("priority").default(0).notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    maxAttempts: integer("max_attempts").default(3).notNull(),
+    runAt: timestamp("run_at", { withTimezone: true }).defaultNow().notNull(),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedBy: text("locked_by"),
+    lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
     errorMessage: text("error_message"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -289,6 +296,8 @@ export const reviewJobs = pgTable(
     index("review_jobs_tenant_id_idx").on(table.tenantId),
     index("review_jobs_repository_id_idx").on(table.repositoryId),
     index("review_jobs_pull_request_id_idx").on(table.pullRequestId),
+    index("review_jobs_queue_idx").on(table.status, table.runAt, table.priority),
+    index("review_jobs_locked_idx").on(table.status, table.lockedAt),
     uniqueIndex("review_jobs_dedupe_uidx").on(table.tenantId, table.owner, table.repo, table.number, table.headSha, table.trigger),
   ],
 );
@@ -318,6 +327,63 @@ export const githubReportWritebacks = pgTable(
     index("github_report_writebacks_tenant_id_idx").on(table.tenantId),
     index("github_report_writebacks_report_id_idx").on(table.reportId),
     uniqueIndex("github_report_writebacks_report_kind_uidx").on(table.reportId, table.kind),
+  ],
+);
+
+export const reviewDrafts = pgTable(
+  "review_drafts",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    reportId: text("report_id")
+      .notNull()
+      .references(() => prReports.id, { onDelete: "cascade" }),
+    repositoryId: text("repository_id").references(() => repositories.id, { onDelete: "set null" }),
+    pullRequestId: text("pull_request_id").references(() => pullRequests.id, { onDelete: "set null" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    status: text("status", { enum: ["draft", "submitted", "abandoned"] }).default("draft").notNull(),
+    reviewEvent: text("review_event", { enum: ["COMMENT", "REQUEST_CHANGES", "APPROVE"] }).default("COMMENT").notNull(),
+    body: text("body").notNull(),
+    githubReviewId: text("github_review_id"),
+    githubNodeId: text("github_node_id"),
+    githubHtmlUrl: text("github_html_url"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("review_drafts_tenant_id_idx").on(table.tenantId),
+    index("review_drafts_report_id_idx").on(table.reportId),
+    index("review_drafts_user_id_idx").on(table.userId),
+    uniqueIndex("review_drafts_report_user_uidx").on(table.reportId, table.userId),
+  ],
+);
+
+export const reviewDraftComments = pgTable(
+  "review_draft_comments",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    draftId: text("draft_id")
+      .notNull()
+      .references(() => reviewDrafts.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    side: text("side", { enum: ["LEFT", "RIGHT"] }).default("RIGHT").notNull(),
+    line: integer("line"),
+    startLine: integer("start_line"),
+    startSide: text("start_side", { enum: ["LEFT", "RIGHT"] }),
+    body: text("body").notNull(),
+    source: text("source", { enum: ["manual", "ai_suggested"] }).default("manual").notNull(),
+    status: text("status", { enum: ["draft", "published", "deleted"] }).default("draft").notNull(),
+    githubCommentId: text("github_comment_id"),
+    ...timestamps,
+  },
+  (table) => [
+    index("review_draft_comments_tenant_id_idx").on(table.tenantId),
+    index("review_draft_comments_draft_id_idx").on(table.draftId),
   ],
 );
 

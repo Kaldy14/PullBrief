@@ -54,7 +54,7 @@ export function PullRequestUrlForm({
           {pending ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden />
-              Generating
+              Queueing
             </>
           ) : (
             <>
@@ -70,7 +70,7 @@ export function PullRequestUrlForm({
         </p>
       ) : (
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Uses a server-side GitHub token when configured. Reports are cached by PR head SHA.
+          Queues a durable review job. A worker generates the report and caches it by PR head SHA.
         </p>
       )}
     </form>

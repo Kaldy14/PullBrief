@@ -3,6 +3,7 @@ import "server-only";
 import { spawn } from "node:child_process";
 
 import { buildHeuristicReport } from "@/lib/reports/heuristics";
+import { buildPullBriefReportPrompt, REPORT_PROMPT_VERSION } from "@/lib/reports/prompts";
 import { pullBriefReportJsonSchema } from "@/lib/reports/report-schema";
 import type { PullBriefReport, PullRequestContext, RiskLevel, ReviewMode } from "@/lib/reports/types";
 
@@ -28,7 +29,7 @@ export async function generatePullBriefReport(context: PullRequestContext): Prom
         provider: "pi",
         model: piModelLabel(),
         mode: "print-cli",
-        warnings: report.generator.warnings,
+        warnings: addPromptVersionWarning(report.generator.warnings),
       },
     };
   } catch (error) {
@@ -45,7 +46,7 @@ export async function generatePullBriefReport(context: PullRequestContext): Prom
 
 async function generateWithPiCli(context: PullRequestContext): Promise<PullBriefReport> {
   const output = await runPiPrint({
-    prompt: buildPiPrompt(),
+    prompt: buildPullBriefReportPrompt(pullBriefReportJsonSchema),
     stdin: JSON.stringify(compactContextForModel(context), null, 2),
   });
   const parsed = parseJsonFromCliOutput(output.stdout);
@@ -53,21 +54,7 @@ async function generateWithPiCli(context: PullRequestContext): Promise<PullBrief
   return normalizeReport(assertPullBriefReport(parsed));
 }
 
-function buildPiPrompt() {
-  return [
-    "Generate a PullBrief PR review report as JSON.",
-    "You are running under pi print mode for a server-side report generation job.",
-    "The stdin content is pr_context JSON derived from the GitHub API, including changed files and patches.",
-    "Use only that context. Do not invent files, checks, Jira tickets, business facts, or behavior not present in the context.",
-    "Rank files by review significance, not alphabetically. Authentication, authorization, database, queues, payment, external integrations, API contracts, config, secrets, and infra are high-signal areas.",
-    "Write compact reviewer-facing prose. Avoid generic commentary unless tied to a concrete file, risk, command, or question.",
-    "Return one JSON object only. No markdown fences, no prose before or after the JSON.",
-    "The JSON object must match this schema exactly:",
-    JSON.stringify(pullBriefReportJsonSchema),
-  ].join("\n");
-}
-
-async function runPiPrint(input: { prompt: string; stdin: string }): Promise<{ stdout: string; stderr: string }> {
+export async function runPiPrint(input: { prompt: string; stdin: string }): Promise<{ stdout: string; stderr: string }> {
   const command = process.env.PULLBRIEF_PI_COMMAND?.trim() || DEFAULT_PI_COMMAND;
   const args = [command, ...buildPiArgs(input.prompt)];
   const timeoutMs = numberFromEnv("PULLBRIEF_PI_TIMEOUT_MS", DEFAULT_PI_TIMEOUT_MS);
@@ -315,6 +302,11 @@ function assertPullBriefReport(value: unknown): PullBriefReport {
   }
 
   return report as PullBriefReport;
+}
+
+function addPromptVersionWarning(warnings: string[]) {
+  const marker = `prompt:${REPORT_PROMPT_VERSION}`;
+  return warnings.includes(marker) ? warnings : [...warnings, marker];
 }
 
 function piModelLabel() {

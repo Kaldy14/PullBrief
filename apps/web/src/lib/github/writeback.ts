@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { githubReportWritebacks, pullRequests } from "@/db/schema";
@@ -13,13 +13,54 @@ import type { PullBriefReport, ReportRecord, ReportRecommendation } from "@/lib/
 const API_VERSION = "2022-11-28";
 const STICKY_MARKER = "<!-- pullbrief:sticky-review -->";
 
+export type GitHubWritebackKind = "check_run" | "sticky_comment" | "pull_request_review";
+export type PullRequestReviewEvent = "COMMENT" | "REQUEST_CHANGES" | "APPROVE";
+
+export type PullRequestReviewCommentInput = {
+  path: string;
+  body: string;
+  line: number;
+  side: "LEFT" | "RIGHT";
+  startLine?: number | null;
+  startSide?: "LEFT" | "RIGHT" | null;
+};
+
 export type GitHubWritebackResult = {
-  kind: "check_run" | "sticky_comment" | "pull_request_review";
+  kind: GitHubWritebackKind;
   status: "published" | "failed";
   htmlUrl: string | null;
   githubDatabaseId: string | null;
   errorMessage: string | null;
 };
+
+export type GitHubWritebackView = {
+  kind: GitHubWritebackKind;
+  status: "pending" | "published" | "failed";
+  htmlUrl: string | null;
+  githubDatabaseId: string | null;
+  errorMessage: string | null;
+  updatedAt: string;
+};
+
+export async function listReportWritebacksForTenant(input: {
+  reportId: string;
+  tenantId: string;
+}): Promise<GitHubWritebackView[]> {
+  const rows = await db
+    .select()
+    .from(githubReportWritebacks)
+    .where(and(eq(githubReportWritebacks.reportId, input.reportId), eq(githubReportWritebacks.tenantId, input.tenantId)))
+    .orderBy(desc(githubReportWritebacks.updatedAt));
+
+  return rows.map((row) => ({
+    kind: row.kind,
+    status: row.status,
+    htmlUrl: row.githubHtmlUrl,
+    githubDatabaseId: row.githubDatabaseId,
+    errorMessage: row.errorMessage,
+    updatedAt: row.updatedAt.toISOString(),
+  }));
+}
 
 export async function publishReportCheckRun(record: ReportRecord): Promise<GitHubWritebackResult> {
   return publishWriteback(record, "check_run", async ({ token, existing }) => {
@@ -75,7 +116,14 @@ export async function publishStickyComment(record: ReportRecord): Promise<GitHub
   });
 }
 
-export async function publishPullRequestReview(record: ReportRecord): Promise<GitHubWritebackResult> {
+export async function publishPullRequestReview(
+  record: ReportRecord,
+  input: {
+    event?: PullRequestReviewEvent;
+    body?: string;
+    comments?: PullRequestReviewCommentInput[];
+  } = {},
+): Promise<GitHubWritebackResult> {
   return publishWriteback(record, "pull_request_review", async ({ token }) => {
     if (!record.report) {
       throw new Error("Cannot publish a failed report as a pull request review.");
@@ -87,8 +135,12 @@ export async function publishPullRequestReview(record: ReportRecord): Promise<Gi
         method: "POST",
         token,
         body: {
-          event: reviewEvent(record.report.decision.recommendation),
-          body: markdownReportSummary(record),
+          event: input.event ?? reviewEvent(record.report.decision.recommendation),
+          body: input.body ?? markdownReportSummary(record),
+          commit_id: record.headSha,
+          ...(input.comments && input.comments.length > 0
+            ? { comments: input.comments.map(toGitHubReviewComment) }
+            : {}),
         },
       },
     );
@@ -99,7 +151,7 @@ export async function publishPullRequestReview(record: ReportRecord): Promise<Gi
 
 async function publishWriteback(
   record: ReportRecord,
-  kind: "check_run" | "sticky_comment" | "pull_request_review",
+  kind: GitHubWritebackKind,
   publish: (input: {
     token: string;
     existing: typeof githubReportWritebacks.$inferSelect | null;
@@ -165,7 +217,7 @@ async function publishWriteback(
 
 async function upsertWriteback(input: {
   record: ReportRecord;
-  kind: "check_run" | "sticky_comment" | "pull_request_review";
+  kind: GitHubWritebackKind;
   repositoryId: string;
   githubDatabaseId: string | null;
   githubNodeId: string | null;
@@ -314,7 +366,19 @@ function checkConclusion(recommendation: ReportRecommendation) {
   return "success";
 }
 
-function reviewEvent(recommendation: ReportRecommendation) {
+function toGitHubReviewComment(comment: PullRequestReviewCommentInput) {
+  return {
+    path: comment.path,
+    body: comment.body,
+    line: comment.line,
+    side: comment.side,
+    ...(comment.startLine && comment.startLine !== comment.line
+      ? { start_line: comment.startLine, start_side: comment.startSide ?? comment.side }
+      : {}),
+  };
+}
+
+function reviewEvent(recommendation: ReportRecommendation): PullRequestReviewEvent {
   if (recommendation === "approve") {
     return "APPROVE";
   }

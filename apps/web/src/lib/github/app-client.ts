@@ -1,7 +1,5 @@
 import "server-only";
 
-import { App } from "octokit";
-
 import { requireGitHubAppConfig } from "@/lib/github/app-config";
 
 export type GitHubInstallationToken = {
@@ -37,18 +35,27 @@ export type GitHubInstallationRepository = {
   archived: boolean;
 };
 
+type GitHubAppInstance = InstanceType<typeof import("octokit").App>;
+
 type GlobalWithGitHubApp = typeof globalThis & {
-  pullbriefGitHubApp?: App;
+  pullbriefGitHubApp?: GitHubAppInstance;
+  pullbriefGitHubAppPromise?: Promise<GitHubAppInstance>;
 };
 
 const globalForGitHubApp = globalThis as GlobalWithGitHubApp;
 
-export function getGitHubApp() {
+export async function getGitHubApp() {
   if (process.env.NODE_ENV === "production") {
     return createGitHubApp();
   }
 
-  return globalForGitHubApp.pullbriefGitHubApp ??= createGitHubApp();
+  if (globalForGitHubApp.pullbriefGitHubApp) {
+    return globalForGitHubApp.pullbriefGitHubApp;
+  }
+
+  globalForGitHubApp.pullbriefGitHubAppPromise ??= createGitHubApp();
+  globalForGitHubApp.pullbriefGitHubApp = await globalForGitHubApp.pullbriefGitHubAppPromise;
+  return globalForGitHubApp.pullbriefGitHubApp;
 }
 
 export async function getInstallationToken(
@@ -64,7 +71,8 @@ export async function getInstallationToken(
     authRequest.repositoryIds = [parseGitHubNumericId(githubRepositoryId, "repository id")];
   }
 
-  const auth = await getGitHubApp().octokit.auth(authRequest) as unknown;
+  const app = await getGitHubApp();
+  const auth = await app.octokit.auth(authRequest) as unknown;
 
   if (!isRecord(auth) || typeof auth.token !== "string") {
     throw new Error("GitHub App did not return an installation token.");
@@ -79,7 +87,8 @@ export async function getInstallationToken(
 }
 
 export async function getInstallationInfo(githubInstallationId: string): Promise<GitHubInstallationInfo> {
-  const response = await getGitHubApp().octokit.request("GET /app/installations/{installation_id}", {
+  const app = await getGitHubApp();
+  const response = await app.octokit.request("GET /app/installations/{installation_id}", {
     installation_id: parseGitHubNumericId(githubInstallationId, "installation id"),
   });
 
@@ -89,7 +98,8 @@ export async function getInstallationInfo(githubInstallationId: string): Promise
 export async function listInstallationRepositories(
   githubInstallationId: string,
 ): Promise<GitHubInstallationRepository[]> {
-  const octokit = await getGitHubApp().getInstallationOctokit(
+  const app = await getGitHubApp();
+  const octokit = await app.getInstallationOctokit(
     parseGitHubNumericId(githubInstallationId, "installation id"),
   );
   const repositories = await octokit.paginate("GET /installation/repositories", {
@@ -99,9 +109,11 @@ export async function listInstallationRepositories(
   return repositories.map((repo) => parseInstallationRepository(repo as unknown));
 }
 
-function createGitHubApp() {
+async function createGitHubApp() {
   const config = requireGitHubAppConfig();
   const appId = parseGitHubNumericId(config.appId, "app id");
+
+  const { App } = await import("octokit");
 
   return new App({
     appId,

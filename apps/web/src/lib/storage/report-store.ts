@@ -96,6 +96,27 @@ export async function findLatestReport(input: {
   return row ? rowToRecord(row) : null;
 }
 
+export async function listReportsForPullRequest(input: {
+  tenantId: string;
+  owner: string;
+  repo: string;
+  number: number;
+  limit?: number;
+}): Promise<ReportRecord[]> {
+  const rows = await reportQuery()
+    .where(and(
+      eq(prReports.tenantId, input.tenantId),
+      eq(repositories.owner, input.owner.toLowerCase()),
+      eq(repositories.name, input.repo.toLowerCase()),
+      eq(pullRequests.number, input.number),
+      reportVisibilityCondition(),
+    ))
+    .orderBy(desc(prReports.updatedAt))
+    .limit(input.limit ?? 10);
+
+  return rows.map(rowToRecord);
+}
+
 export async function listRecentReports(tenantId: string, limit = 10): Promise<ReportRecord[]> {
   const rows = await reportQuery()
     .where(and(eq(prReports.tenantId, tenantId), reportVisibilityCondition()))

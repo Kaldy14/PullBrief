@@ -2,9 +2,10 @@
 
 import { redirect } from "next/navigation";
 
-import { buildPullBriefRoute, parsePositivePullNumber } from "@/lib/github/pr-url";
 import { requireServerActionAccess } from "@/lib/auth/guard";
-import { createReportForPullRequest, createReportFromUrl } from "@/lib/reports/service";
+import { parsePositivePullNumber } from "@/lib/github/pr-url";
+import { enqueueReviewJob, enqueueReviewJobFromUrl } from "@/lib/review-jobs/queue";
+import { buildReviewJobRoute } from "@/lib/review-jobs/routes";
 
 export type GenerateReportActionState = {
   error: string | null;
@@ -17,26 +18,36 @@ export async function generateReportAction(
 ): Promise<GenerateReportActionState> {
   const prUrl = stringFromFormData(formData, "prUrl");
   const access = await requireServerActionAccess();
-  let reportPath: string;
+  let jobPath: string;
 
   try {
-    const record = await createReportFromUrl(prUrl, access.tenantId);
-    reportPath = buildPullBriefRoute(record);
+    const job = await enqueueReviewJobFromUrl({
+      tenantId: access.tenantId,
+      requestedByUserId: access.userId,
+      prUrl,
+      trigger: "manual",
+    });
+    jobPath = buildReviewJobRoute(job);
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : "Unable to generate the report.",
+      error: error instanceof Error ? error.message : "Unable to queue the report.",
       prUrl,
     };
   }
 
-  redirect(reportPath);
+  redirect(jobPath);
 }
 
 export async function generateReportFormAction(formData: FormData): Promise<void> {
   const prUrl = stringFromFormData(formData, "prUrl");
   const access = await requireServerActionAccess();
-  const record = await createReportFromUrl(prUrl, access.tenantId);
-  redirect(buildPullBriefRoute(record));
+  const job = await enqueueReviewJobFromUrl({
+    tenantId: access.tenantId,
+    requestedByUserId: access.userId,
+    prUrl,
+    trigger: "manual",
+  });
+  redirect(buildReviewJobRoute(job));
 }
 
 export async function regenerateReportFormAction(formData: FormData): Promise<void> {
@@ -44,9 +55,17 @@ export async function regenerateReportFormAction(formData: FormData): Promise<vo
   const repo = stringFromFormData(formData, "repo");
   const number = parsePositivePullNumber(stringFromFormData(formData, "number"));
   const access = await requireServerActionAccess();
+  const job = await enqueueReviewJob({
+    owner,
+    repo,
+    number,
+    tenantId: access.tenantId,
+    requestedByUserId: access.userId,
+    trigger: "rerun",
+    priority: 10,
+  });
 
-  const record = await createReportForPullRequest({ owner, repo, number }, access.tenantId, { force: true });
-  redirect(buildPullBriefRoute(record));
+  redirect(buildReviewJobRoute(job));
 }
 
 function stringFromFormData(formData: FormData, key: string) {

@@ -10,7 +10,6 @@ import {
   githubWebhookDeliveries,
   pullRequests,
   repositories,
-  reviewJobs,
 } from "@/db/schema";
 import { isGitHubAccountAllowed } from "@/lib/github/app-config";
 import {
@@ -19,6 +18,7 @@ import {
   markInstallationSuspended,
   syncGitHubInstallation,
 } from "@/lib/github/installations";
+import { enqueueReviewJob } from "@/lib/review-jobs/queue";
 
 export type GitHubWebhookResult = {
   status: "accepted" | "ignored" | "failed";
@@ -130,11 +130,12 @@ async function processWebhook(
     });
 
     if (pullRequest.repositoryEnabled && shouldQueueReview(action)) {
-      await queueReviewJob({
+      await enqueueReviewJob({
         tenantId: tenantInstallation.tenantId,
         repositoryId: pullRequest.repositoryId,
         pullRequestId: pullRequest.id,
-        deliveryId,
+        githubDeliveryId: deliveryId,
+        trigger: "webhook",
         owner: pullRequest.owner,
         repo: pullRequest.repo,
         number: pullRequest.number,
@@ -326,33 +327,6 @@ async function upsertPullRequestFromPayload(input: {
     number,
     headSha,
   };
-}
-
-async function queueReviewJob(input: {
-  tenantId: string;
-  repositoryId: string;
-  pullRequestId: string;
-  deliveryId: string;
-  owner: string;
-  repo: string;
-  number: number;
-  headSha: string;
-}) {
-  await db.insert(reviewJobs).values({
-    id: randomUUID(),
-    tenantId: input.tenantId,
-    repositoryId: input.repositoryId,
-    pullRequestId: input.pullRequestId,
-    githubDeliveryId: input.deliveryId,
-    owner: input.owner,
-    repo: input.repo,
-    number: input.number,
-    headSha: input.headSha,
-    trigger: "webhook",
-    status: "queued",
-  }).onConflictDoNothing({
-    target: [reviewJobs.tenantId, reviewJobs.owner, reviewJobs.repo, reviewJobs.number, reviewJobs.headSha, reviewJobs.trigger],
-  });
 }
 
 async function tenantIdFromPayload(payload: Record<string, unknown>) {

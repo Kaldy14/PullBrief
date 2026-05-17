@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { tenantMembers, tenants } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { ForbiddenError, UnauthorizedError } from "@/lib/auth/errors";
 
 export type TenantRole = "admin" | "reviewer" | "viewer";
 
@@ -20,23 +21,7 @@ export type UserAccess = {
   role: TenantRole;
 };
 
-export class UnauthorizedError extends Error {
-  readonly status = 401;
-
-  constructor(message = "Authentication required.") {
-    super(message);
-    this.name = "UnauthorizedError";
-  }
-}
-
-export class ForbiddenError extends Error {
-  readonly status = 403;
-
-  constructor(message = "Tenant access required.") {
-    super(message);
-    this.name = "ForbiddenError";
-  }
-}
+export { ForbiddenError, UnauthorizedError } from "@/lib/auth/errors";
 
 export async function getAccessFromHeaders(headers: Headers): Promise<UserAccess | null> {
   const session = await auth.api.getSession({ headers });

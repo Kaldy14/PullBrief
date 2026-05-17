@@ -13,9 +13,11 @@ This repository is a pnpm workspace with the Next.js app in `apps/web`.
 - Postgres persistence with Drizzle ORM migrations
 - Tenant membership guard for report pages and report APIs
 - MVP AI backend shells out to the local `pi` CLI (`pi -p ...`), not a direct OpenAI API key
-- GitHub fetching currently uses a server-side token; GitHub App installation-token support is the next slice
+- GitHub App foundation for installation-token fetching, repository allowlists, webhook validation, and writeback helpers
+- Durable Postgres review queue with a separate worker process
+- Localhost-only PAT/public fallback for smoke tests when explicitly enabled
 
-The initial product plan is captured in [`docs/INITIAL_PLAN.md`](docs/INITIAL_PLAN.md). Phase 1 setup notes are in [`docs/PHASE_1.md`](docs/PHASE_1.md); auth/database notes are in [`docs/AUTH_DB.md`](docs/AUTH_DB.md); GitHub App setup is in [`docs/GITHUB_APP.md`](docs/GITHUB_APP.md).
+The initial product plan is captured in [`docs/INITIAL_PLAN.md`](docs/INITIAL_PLAN.md). Phase 1 setup notes are in [`docs/PHASE_1.md`](docs/PHASE_1.md); auth/database notes are in [`docs/AUTH_DB.md`](docs/AUTH_DB.md); GitHub App setup is in [`docs/GITHUB_APP.md`](docs/GITHUB_APP.md); review worker docs are in [`docs/REVIEW_JOBS.md`](docs/REVIEW_JOBS.md); report UX/retention notes are in [`docs/REPORT_UX_AND_RETENTION.md`](docs/REPORT_UX_AND_RETENTION.md); review workbench notes are in [`docs/REVIEW_WORKBENCH.md`](docs/REVIEW_WORKBENCH.md) and [`docs/REVIEW_WORKBENCH_PRODUCT_NOTES.md`](docs/REVIEW_WORKBENCH_PRODUCT_NOTES.md); pi prompt notes are in [`docs/PI_PROMPTS.md`](docs/PI_PROMPTS.md); current status and next phases are in [`docs/STATUS_AND_ROADMAP.md`](docs/STATUS_AND_ROADMAP.md).
 
 ## Local setup
 
@@ -43,6 +45,8 @@ pnpm --filter @pullbrief/web db:generate  # create Drizzle migrations from schem
 pnpm --filter @pullbrief/web db:migrate   # apply migrations to DATABASE_URL
 pnpm --filter @pullbrief/web db:studio    # inspect local Postgres
 pnpm --filter @pullbrief/web db:seed      # create/update the seeded internal user and tenant membership
+pnpm --filter @pullbrief/web worker:reviews # process queued reviews continuously
+pnpm --filter @pullbrief/web reports:prune-context # prune old raw patch text from stored context
 ```
 
 Public sign-up is disabled at the Better Auth API hook by default. Use `db:seed` to create internal accounts.

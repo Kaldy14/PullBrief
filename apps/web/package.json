@@ -11,12 +11,16 @@
     "db:generate": "drizzle-kit generate --config=./drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=./drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config=./drizzle.config.ts",
-    "db:seed": "NODE_OPTIONS=--conditions=react-server tsx scripts/seed-internal-user.ts"
+    "db:seed": "NODE_OPTIONS=--conditions=react-server tsx scripts/seed-internal-user.ts",
+    "worker:reviews": "NODE_OPTIONS=--conditions=react-server tsx scripts/review-worker.ts",
+    "worker:reviews:once": "NODE_OPTIONS=--conditions=react-server tsx scripts/review-worker.ts --once",
+    "reports:prune-context": "NODE_OPTIONS=--conditions=react-server tsx scripts/prune-report-context.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@better-auth/drizzle-adapter": "^1.6.11",
     "@octokit/webhooks": "^14.2.0",
+    "@pierre/diffs": "^1.1.22",
     "better-auth": "^1.6.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -27,6 +31,8 @@
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "server-only": "^0.0.1",
     "shadcn": "^4.7.0",
     "tailwind-merge": "^3.6.0",

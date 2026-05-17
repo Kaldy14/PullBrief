@@ -12,9 +12,9 @@ They are fluent in their category's best tools: Linear for tickets, Raycast for 
 
 ## Product Purpose
 
-PullBrief turns a GitHub pull request into a ranked, structured review brief: a one-paragraph intent summary, risk-ordered file list, logical change groups, verification notes, and (later) chat and comment writeback. The goal is to make a large PR understandable in the first sixty seconds — before the reviewer has read a single diff — and to give every subsequent reviewer of that PR the same context without rebuilding it from raw patches.
+PullBrief turns a GitHub pull request into a ranked, structured review brief and an AI-assisted diff workbench: a one-paragraph intent summary, risk-ordered file list, logical change groups, verification notes, viewed-file tracking, private AI notes, and contextual AI chat over selected diff ranges. The goal is to make a large PR understandable in the first sixty seconds before the reviewer has read a single diff, then speed up the actual diff pass without getting in the reviewer's way.
 
-Success looks like a reviewer opening a thirty-file PR, reading two screens of PullBrief, and knowing exactly which three files to read carefully and which fifteen to skim. Failure looks like the reviewer closing the tab and going back to GitHub.
+Success looks like a reviewer opening a thirty-file PR, reading two screens of PullBrief, knowing exactly which three files to read carefully and which fifteen to skim, marking files viewed while moving through the diff, asking AI focused questions only when uncertainty appears, and optionally sending a collected set of private reviewer notes to AI for deeper reasoning. Failure looks like the reviewer closing the tab and going back to GitHub.
 
 The product is open source, deployable as a self-hosted GitHub App or (later) hosted SaaS. It is generic across organisations, repositories, and Jira instances; nothing about a specific tenant is baked into the design.
 
@@ -42,8 +42,9 @@ These are explicit vetoes. If a screenshot of PullBrief could be mistaken for an
 1. **Practice what we preach.** The product helps reviewers rank, summarise, and read with focus. The UI must do the same: ranked navigation, summary-first reading, no decorative chrome competing for attention.
 2. **Information has rank.** Every screen has a single most-important thing. Show it first, larger, alone. Subordinate everything else.
 3. **Show, don't decorate.** A risk badge is a colour and a word. A SHA is monospace. A file path is monospace. The chrome is whatever's left after the content is placed.
-4. **Earn the user's hours.** This is a tool people sit inside, not a page they glance at. Long-session comfort beats short-session impression: dark surface, restrained colour, no motion that costs the user attention, keyboard reachability for everything that matters.
-5. **Commit to opinions.** Restrained palette, one accent, one type family pair, one set of radii, one motion curve. Variety comes from rank and density, not from new components.
+4. **The diff is the product.** The workbench exists for senior reviewers who can read code. Do not bury the diff behind writeback panels, generic forms, or AI theatre. Contextual AI actions appear when code is selected; otherwise the screen belongs to the diff and file queue.
+5. **Earn the user's hours.** This is a tool people sit inside, not a page they glance at. Long-session comfort beats short-session impression: dark surface, restrained colour, no motion that costs the user attention, keyboard reachability for everything that matters.
+6. **Commit to opinions.** Restrained palette, one accent, one type family pair, one set of radii, one motion curve. Variety comes from rank and density, not from new components.
 
 ## Accessibility & Inclusion
 

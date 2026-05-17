@@ -4,7 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import { githubInstallations, repositories } from "@/db/schema";
-import { ForbiddenError } from "@/lib/auth/guard";
+import { ForbiddenError } from "@/lib/auth/errors";
 import { allowGitHubFallbackFetch, gitHubAppRequiredForReports, isGitHubAppConfigured, requireGitHubAccountAllowed } from "@/lib/github/app-config";
 import { getInstallationToken } from "@/lib/github/app-client";
 import type { GitHubPullRequestRef } from "@/lib/github/pr-url";

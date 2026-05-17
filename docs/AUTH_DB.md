@@ -30,6 +30,8 @@ DATABASE_URL=postgresql://pullbrief:pullbrief@localhost:55432/pullbrief pnpm --f
 ## Current tables
 
 - Better Auth: `user`, `session`, `account`, `verification`
-- App: `tenants`, `tenant_members`, `github_installations`, `repositories`, `pull_requests`, `pr_reports`
+- Tenant/authz: `tenants`, `tenant_members`
+- GitHub App: `github_install_states`, `github_installations`, `repositories`, `github_webhook_deliveries`
+- Review data: `pull_requests`, `pr_reports`, `review_jobs`, `github_report_writebacks`
 
-GitHub App installation storage, repository allowlists, webhook delivery logs, queued review jobs, and writeback artifact tracking are implemented. See `docs/GITHUB_APP.md` for setup and permissions.
+GitHub App installation storage, repository allowlists, webhook delivery logs, queued review jobs, and writeback artifact tracking are implemented. See `docs/GITHUB_APP.md` for setup and permissions, and `docs/STATUS_AND_ROADMAP.md` for the complete status/roadmap.

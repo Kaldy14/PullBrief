@@ -9,7 +9,7 @@ import { ReportView } from "@/components/reports/report-view";
 import { Button } from "@/components/ui/button";
 import { requirePageAccess } from "@/lib/auth/guard";
 import { parsePositivePullNumber, buildGitHubPullRequestUrl } from "@/lib/github/pr-url";
-import { findLatestReport } from "@/lib/storage/report-store";
+import { findLatestReport, getReportRecord, listReportsForPullRequest } from "@/lib/storage/report-store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,6 +20,9 @@ type PullRequestPageProps = {
     repo: string;
     number: string;
   }>;
+  searchParams?: Promise<{
+    report?: string | string[];
+  }>;
 };
 
 export async function generateMetadata({ params }: PullRequestPageProps): Promise<Metadata> {
@@ -29,16 +32,26 @@ export async function generateMetadata({ params }: PullRequestPageProps): Promis
   };
 }
 
-export default async function PullRequestReportPage({ params }: PullRequestPageProps) {
+export default async function PullRequestReportPage({ params, searchParams }: PullRequestPageProps) {
   const ref = await readParams(params);
-  const access = await requirePageAccess(`/${ref.owner}/${ref.repo}/pull/${ref.number}`);
-  const record = await findLatestReport({ ...ref, tenantId: access.tenantId });
+  const selectedReportId = firstParam((await searchParams)?.report);
+  const access = await requirePageAccess(
+    selectedReportId
+      ? `/${ref.owner}/${ref.repo}/pull/${ref.number}?report=${encodeURIComponent(selectedReportId)}`
+      : `/${ref.owner}/${ref.repo}/pull/${ref.number}`,
+  );
+  const selectedRecord = selectedReportId ? await getReportRecord(selectedReportId, access.tenantId) : null;
+  const record = selectedRecord && matchesRef(selectedRecord, ref)
+    ? selectedRecord
+    : await findLatestReport({ ...ref, tenantId: access.tenantId });
 
   if (!record) {
     return <NoReportYet owner={ref.owner} repo={ref.repo} number={ref.number} />;
   }
 
-  return <ReportView record={record} />;
+  const history = await listReportsForPullRequest({ ...ref, tenantId: access.tenantId, limit: 8 });
+
+  return <ReportView record={record} history={history} />;
 }
 
 async function readParams(params: PullRequestPageProps["params"]) {
@@ -53,6 +66,19 @@ async function readParams(params: PullRequestPageProps["params"]) {
   } catch {
     notFound();
   }
+}
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function matchesRef(
+  record: { owner: string; repo: string; number: number },
+  ref: { owner: string; repo: string; number: number },
+) {
+  return record.owner.toLowerCase() === ref.owner.toLowerCase()
+    && record.repo.toLowerCase() === ref.repo.toLowerCase()
+    && record.number === ref.number;
 }
 
 function NoReportYet({ owner, repo, number }: { owner: string; repo: string; number: number }) {

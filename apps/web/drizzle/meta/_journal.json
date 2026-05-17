@@ -22,6 +22,20 @@
       "when": 1778788056768,
       "tag": "0002_special_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778837400308,
+      "tag": "0003_flawless_doctor_octopus",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778852622385,
+      "tag": "0004_giant_baron_strucker",
+      "breakpoints": true
     }
   ]
 }

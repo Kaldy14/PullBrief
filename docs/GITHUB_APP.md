@@ -112,10 +112,14 @@ GET  /api/github/repositories
 PATCH /api/github/repositories
 POST /api/github/webhooks
 POST /api/reports/:id/github/writeback
+GET  /api/reports/:id/review-draft
+PUT  /api/reports/:id/review-draft
+POST /api/reports/:id/review-draft/submit
+POST /api/reports/:id/ai/clarify
 ```
 
 ## Current limits
 
-- Webhook `pull_request` events create queued `review_jobs`, but no background worker consumes them yet.
 - Setup callback validation uses PullBrief session + one-time state + GitHub user authorization to verify the installation is visible to the installing user. Local-only bypass is available with `PULLBRIEF_SKIP_GITHUB_USER_INSTALL_VERIFICATION=true`.
 - PAT/public fallback requires `PULLBRIEF_ALLOW_GITHUB_TOKEN_FALLBACK=true`, `PULLBRIEF_CONFIRM_LOCALHOST_ONLY_FALLBACK=true`, and a localhost app URL. Production always fails closed.
+- Review workbench submit requires a real GitHub App installation with `Pull requests: write`; localhost PAT fallback is not used for writeback.

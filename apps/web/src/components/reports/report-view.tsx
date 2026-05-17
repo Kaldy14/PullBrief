@@ -6,6 +6,7 @@ import {
   FileCode2,
   GitBranch,
   GitCommitHorizontal,
+  GitPullRequestArrow,
   ListOrdered,
   RefreshCcw,
   ShieldAlert,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 type ReportViewProps = {
   record: ReportRecord;
+  history?: ReportRecord[];
 };
 
 const riskVariant: Record<RiskLevel, "riskHigh" | "riskMed" | "riskLow"> = {
@@ -49,7 +51,7 @@ const decisionLabel: Record<string, string> = {
   review_carefully: "review carefully",
 };
 
-export function ReportView({ record }: ReportViewProps) {
+export function ReportView({ record, history = [] }: ReportViewProps) {
   const report = record.report;
 
   if (!report) {
@@ -118,15 +120,52 @@ export function ReportView({ record }: ReportViewProps) {
 
             <Separator className="my-5" />
 
+            <Button
+              nativeButton={false}
+              render={(
+                <Link href={`/reports/${record.id}/workbench`}>
+                  <GitPullRequestArrow className="size-3.5" aria-hidden />
+                  Open review workbench
+                </Link>
+              )}
+              className="mb-2 w-full"
+            />
+
             <form action={regenerateReportFormAction}>
               <input type="hidden" name="owner" value={record.owner} />
               <input type="hidden" name="repo" value={record.repo} />
               <input type="hidden" name="number" value={record.number} />
               <Button type="submit" variant="outline" className="w-full">
                 <RefreshCcw className="size-3.5" aria-hidden />
-                Regenerate current head
+                Queue regeneration
               </Button>
             </form>
+
+            {history.length > 0 ? (
+              <>
+                <Separator className="my-5" />
+                <p className="font-mono text-2xs font-medium uppercase tracking-[0.1em] text-muted-foreground tabular">
+                  Report history
+                </p>
+                <ol className="mt-4 space-y-2">
+                  {history.map((item) => (
+                    <li key={item.id}>
+                      <Link
+                        href={`/${item.owner}/${item.repo}/pull/${item.number}?report=${item.id}`}
+                        className="block rounded-md border border-border bg-background/25 p-2 text-xs hover:bg-background/45"
+                      >
+                        <span className="font-mono text-2xs uppercase text-muted-foreground tabular">
+                          {shortSha(item.headSha)} · {formatDate(item.updatedAt)}
+                        </span>
+                        <span className="mt-1 block truncate text-foreground/90">
+                          {item.report?.decision.recommendation.replace("_", " ") || item.status}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            ) : null}
           </div>
         </aside>
 

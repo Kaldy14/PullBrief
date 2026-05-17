@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { ForbiddenError, requireApiAdminAccess, UnauthorizedError } from "@/lib/auth/guard";
+import { ForbiddenError, requireApiAccess, UnauthorizedError } from "@/lib/auth/guard";
 import { publishReportCheckRun, publishStickyComment, publishPullRequestReview } from "@/lib/github/writeback";
 import { getReportRecord } from "@/lib/storage/report-store";
 
@@ -21,7 +21,11 @@ type WritebackBody = {
 
 export async function POST(request: Request, { params }: WritebackRouteProps) {
   try {
-    const access = await requireApiAdminAccess(request.headers);
+    const access = await requireApiAccess(request.headers);
+
+    if (access.role === "viewer") {
+      throw new ForbiddenError("Reviewer access required.");
+    }
 
     const { id } = await params;
     const record = await getReportRecord(id, access.tenantId);
